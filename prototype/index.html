@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>开锣 · 黄梅戏互动叙事</title>
+<style>
+:root{
+  --bg:#151011; --panel:#241a19; --panel2:#2c201d;
+  --ink:#f3ead8; --muted:#b9a98f; --dim:#8d7f6a;
+  --red:#b3392e; --red2:#c9553f; --gold:#c9a24b; --gold2:#e3c27e;
+  --line:rgba(201,162,75,.35); --line2:rgba(201,162,75,.18);
+  --paper:#f7f1e3; --paperink:#4a2f28;
+  --kai:"Kaiti SC","STKaiti","KaiTi","FZKai-Z03S",serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--kai);overflow:hidden}
+#app{position:fixed;inset:0;display:flex;flex-direction:column}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;top:0;left:0;right:0;z-index:8;display:flex;justify-content:space-between;align-items:center;padding:10px 16px;pointer-events:none}
+#actname{font-size:15px;letter-spacing:.14em;color:var(--gold2);text-shadow:0 1px 3px rgba(0,0,0,.8)}
+#stats{font-size:13px;color:var(--muted);letter-spacing:.1em;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+#stats b{color:var(--gold2);font-weight:400}
+
+/* ---------- 舞台 ---------- */
+#stage{position:absolute;inset:0}
+#bg{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 20%,#3a2a24 0%,#241a19 55%,#151011 100%);transition:filter .8s}
+#bg .tint{position:absolute;inset:0;opacity:0;transition:opacity 1s}
+#bg.shaichang .t2{opacity:.55}#bg.yuntou .t4{opacity:.5}#bg.huaiyin .t1{opacity:.5}#bg.wutai .t5{opacity:.6}#bg.huaiye .t3{opacity:.55}
+.t1{background:linear-gradient(180deg,rgba(96,116,98,.35),rgba(21,16,17,0))}
+.t2{background:linear-gradient(180deg,rgba(122,84,44,.5),rgba(21,16,17,.1))}
+.t3{background:radial-gradient(70% 60% at 50% 40%,rgba(72,84,138,.42),rgba(12,10,20,.15))}
+.t4{background:radial-gradient(45% 40% at 50% 40%,rgba(190,150,90,.4),rgba(21,16,17,0))}
+.t5{background:linear-gradient(180deg,rgba(150,40,30,.5),rgba(20,8,8,.4))}
+#bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1s}
+#bg img.on{opacity:.92}
+#bglabel{position:absolute;top:52px;left:18px;font-size:12px;letter-spacing:.3em;color:rgba(201,162,75,.55);writing-mode:vertical-rl}
+
+/* 立绘位 ASSET: char/*  */
+#portrait{position:absolute;left:max(2%,calc(50% - 645px));bottom:142px;width:200px;height:430px;z-index:3;display:none;transition:opacity .4s}
+#portrait img{width:100%;height:100%;object-fit:contain;object-position:50% 100%;-webkit-mask-image:radial-gradient(ellipse 85% 70% at 50% 55%,#000 60%,transparent 100%);mask-image:radial-gradient(ellipse 85% 70% at 50% 55%,#000 60%,transparent 100%)}
+#portrait .ph{width:100%;height:100%;border:1px solid var(--line2);border-radius:8px;background:linear-gradient(180deg,rgba(201,162,75,.08),rgba(21,16,17,.25));display:flex;align-items:center;justify-content:center}
+#portrait .ph span{writing-mode:vertical-rl;font-size:22px;letter-spacing:.35em;color:rgba(201,162,75,.65)}
+@media (max-width:720px){#portrait{display:none !important}}
+
+/* ---------- 对话框 ---------- */
+#dlgwrap{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;justify-content:center;padding:0 14px 18px;pointer-events:none}
+#dlg{pointer-events:auto;width:min(860px,100%);background:rgba(22,15,14,.94);border:1px solid var(--line);border-radius:12px;padding:16px 22px 14px;cursor:pointer;box-shadow:0 10px 40px rgba(0,0,0,.5);min-height:118px;position:relative}
+#dlg-name{font-size:15px;color:var(--gold);letter-spacing:.2em;margin-bottom:6px}
+#dlg-text{font-size:17px;line-height:1.95;min-height:66px;color:var(--ink)}
+#dlg-next{position:absolute;right:16px;bottom:8px;font-size:12px;color:var(--dim);animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:.9}}
+
+/* ---------- 选项 ---------- */
+#choices{position:absolute;left:0;right:0;bottom:150px;z-index:5;display:flex;flex-direction:column;gap:10px;align-items:center;padding:0 18px}
+.choice{font-family:var(--kai);font-size:16px;letter-spacing:.06em;width:min(620px,100%);text-align:left;padding:12px 20px;background:var(--paper);color:var(--paperink);border:1px solid #d8c9a5;border-radius:8px;cursor:pointer;transition:transform .12s,box-shadow .12s;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.choice:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.5);border-color:var(--gold)}
+.choice::before{content:"　◦　";color:var(--red)}
+.ai-row{display:flex;gap:8px;width:min(620px,100%);margin-top:2px}
+.ai-tabs{display:flex;gap:8px;width:min(620px,100%);margin-bottom:8px;align-items:center}
+.ai-tabs-label{font-size:12px;color:var(--muted);letter-spacing:.15em;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.ai-tab{font-family:var(--kai);font-size:14px;letter-spacing:.08em;padding:8px 16px;border-radius:6px;cursor:pointer;transition:all .15s;border:1px solid var(--line);background:rgba(21,16,17,.78);color:var(--muted);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.ai-tab:hover{color:var(--gold2);border-color:var(--gold)}
+.ai-tab.on{background:var(--paper);color:var(--paperink);border-color:#d8c9a5}
+.ai-input{flex:1;font-family:var(--kai);font-size:15px;letter-spacing:.04em;padding:11px 16px;background:rgba(21,16,17,.72);border:1px solid var(--line2);border-radius:4px;color:var(--paper);outline:none}
+.ai-input:focus{border-color:var(--gold)}
+.ai-send{font-family:var(--kai);font-size:15px;padding:11px 18px;background:rgba(201,162,75,.14);border:1px solid var(--line);border-radius:4px;color:var(--gold2);cursor:pointer}
+.ai-send:hover{background:rgba(201,162,75,.28)}
+.ai-send:disabled{opacity:.4;cursor:default}
+
+/* ---------- 标题屏 ---------- */
+#screen-title{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:radial-gradient(100% 80% at 50% 30%,#3b2820 0%,#1a1210 60%,#120d0c 100%)}
+#screen-title .main{font-size:min(88px,16vw);letter-spacing:.18em;color:var(--ink);text-shadow:0 4px 24px rgba(179,57,46,.45)}
+#screen-title .sub{font-size:16px;letter-spacing:.5em;color:var(--muted)}
+.seal{width:92px;height:92px;background:var(--red);color:var(--paper);display:flex;align-items:center;justify-content:center;font-size:34px;letter-spacing:.1em;border-radius:10px;box-shadow:0 6px 18px rgba(179,57,46,.5);cursor:pointer;transition:transform .15s;transform:rotate(-2deg);border:3px solid rgba(247,241,227,.25)}
+.seal:hover{transform:rotate(-2deg) scale(1.05)}
+#screen-title .meta{font-size:12px;color:var(--dim);letter-spacing:.2em;text-align:center;line-height:2}
+
+/* ---------- 通用浮层 ---------- */
+.ov{position:absolute;inset:0;z-index:12;display:none;background:rgba(12,8,8,.86);backdrop-filter:blur(2px)}
+.ov.on{display:flex}
+.ovpanel{margin:auto;width:min(720px,94%);max-height:90%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px 28px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.ovtitle{font-size:20px;color:var(--gold2);letter-spacing:.25em;margin-bottom:6px}
+.ovhint{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.8}
+
+/* ---------- 物件探索 ---------- */
+#propgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:720px){#propgrid{grid-template-columns:repeat(2,1fr)}}
+.prop{background:var(--paper);border:1px solid #d8c9a5;border-radius:10px;padding:14px 8px 10px;text-align:center;cursor:pointer;transition:transform .12s,opacity .3s;position:relative}
+.prop:hover{transform:translateY(-3px)}
+.prop img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;border:1px solid #d8c9a5}
+.prop .nm{font-size:14px;color:var(--paperink);letter-spacing:.15em;margin-top:8px}
+.prop.seen{opacity:.38;filter:grayscale(.6)}
+.prop.seen::after{content:"已看过";position:absolute;top:6px;right:6px;font-size:10px;color:#9a8a6d}
+#propfoot{display:flex;justify-content:space-between;align-items:center;margin-top:18px}
+#propcount{font-size:13px;color:var(--muted)}
+.bigbtn{font-family:var(--kai);font-size:16px;letter-spacing:.15em;padding:10px 26px;background:var(--red);color:var(--paper);border:none;border-radius:8px;cursor:pointer;transition:transform .12s,opacity .2s}
+.bigbtn:hover{transform:translateY(-2px)}
+.bigbtn:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.ghostbtn{font-family:var(--kai);font-size:14px;letter-spacing:.1em;padding:8px 18px;background:transparent;color:var(--muted);border:1px solid var(--line2);border-radius:8px;cursor:pointer}
+.ghostbtn:hover{color:var(--gold2);border-color:var(--line)}
+
+/* ---------- 节奏游戏 ---------- */
+#ov-rhythm{flex-direction:column;align-items:center;justify-content:center}
+#r-box{width:min(420px,92%);text-align:center}
+#r-track{position:relative;height:min(46vh,380px);width:200px;margin:16px auto;border-left:1px solid var(--line2);border-right:1px solid var(--line2);background:linear-gradient(180deg,rgba(201,162,75,.04),rgba(201,162,75,.1));border-radius:6px;overflow:hidden}
+#r-hline{position:absolute;left:-10px;right:-10px;bottom:64px;height:3px;background:var(--red);box-shadow:0 0 12px rgba(179,57,46,.9)}
+.r-lane{position:absolute;top:8px;font-size:12px;letter-spacing:2px;color:var(--gold2);opacity:.75;transform:translateX(-50%);font-family:var(--kai)}
+.r-lane.lc{left:25%}
+.r-lane.lt{left:75%}
+.r-note{position:absolute;top:-20px;left:50%;width:26px;height:26px;border-radius:50%;background:var(--gold);border:2px solid var(--red2);transform:translate(-50%,0);box-shadow:0 0 8px rgba(201,162,75,.6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#3a2415}
+.r-note.hit{background:var(--red);border-color:var(--gold2);animation:pop .3s forwards}
+.r-note.miss{opacity:.2;filter:grayscale(1)}
+@keyframes pop{to{transform:translate(-50%,0) scale(1.8);opacity:0}}
+#r-pads{display:flex;justify-content:space-around;width:200px;margin:14px auto 6px}
+.r-pad{border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:transform .05s;font-family:var(--kai)}
+.r-pad .zi{font-size:24px;line-height:1}
+.r-pad .key{font-size:11px;opacity:.7;margin-top:2px;letter-spacing:1px}
+.r-pad.c{width:78px;height:78px;background:radial-gradient(circle at 38% 32%,var(--red2),var(--red) 70%);border:3px solid var(--gold);color:var(--paper);box-shadow:0 8px 20px rgba(179,57,46,.4)}
+.r-pad.t{width:60px;height:60px;background:radial-gradient(circle at 38% 32%,var(--gold),#7d5f2a 78%);border:3px solid var(--red);color:#3a2415;box-shadow:0 6px 16px rgba(201,162,75,.35)}
+.r-pad:active{transform:scale(.94)}
+#r-count{font-size:14px;color:var(--gold2);letter-spacing:.2em;margin-top:8px}
+#r-skip{position:absolute;top:14px;right:16px;margin:0;font-size:12px;padding:6px 14px;opacity:.65}
+.ghostbtn:disabled{opacity:.3;cursor:default}
+
+/* ---------- 顺序游戏 ---------- */
+#seq-tray{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;min-height:40px}
+.seq-chip{font-size:14px;letter-spacing:.1em;padding:6px 14px;background:rgba(201,162,75,.12);border:1px solid var(--line);border-radius:999px;color:var(--gold2)}
+#seq-grid{display:flex;gap:10px;flex-wrap:wrap}
+.seq-item{font-family:var(--kai);font-size:15px;letter-spacing:.1em;padding:12px 18px;background:var(--paper);color:var(--paperink);border:1px solid #d8c9a5;border-radius:8px;cursor:pointer;transition:transform .12s}
+.seq-item:hover{transform:translateY(-2px)}
+.seq-item.done{opacity:.25;pointer-events:none}
+.seq-item.shake{animation:shake .3s;border-color:var(--red)}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+#seq-hint{margin-top:14px;font-size:14px;color:var(--muted);min-height:22px}
+
+/* ---------- 结局 ---------- */
+/* 音频按钮与节奏反馈 */
+#snd-btn{font-size:12px;padding:4px 12px;margin-left:10px}
+.r-note.gold{box-shadow:0 0 12px 4px rgba(201,162,75,.9)}
+.r-note.t{left:75%}
+#r-track .r-note.c{left:25%;width:36px;height:36px;border:2px solid var(--gold2);background:radial-gradient(circle at 38% 32%,var(--red2),var(--red) 72%);color:var(--paper);font-size:16px}
+.r-pad.flash{box-shadow:0 0 18px rgba(201,162,75,.75);transform:scale(.94)}
+#r-go{display:block;margin:14px auto 0}
+
+#screen-ending{position:absolute;inset:0;z-index:18;display:none;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(90% 80% at 50% 40%,#2b1c18 0%,#160f0e 70%);padding:20px;overflow:auto}
+#screen-ending.on{display:flex;animation:efade 1.2s ease both}
+@keyframes efade{from{opacity:0}to{opacity:1}}
+#e-img{width:min(640px,94%);border-radius:10px;border:1px solid var(--line2);margin-bottom:16px;display:none;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#e-video{width:min(640px,94%);border-radius:10px;border:1px solid var(--line2);margin-bottom:16px;display:none}
+#e-title{font-size:min(44px,9vw);letter-spacing:.22em;color:var(--gold2);margin-bottom:8px}
+#e-sub{font-size:13px;letter-spacing:.35em;color:var(--red2);margin-bottom:24px}
+#e-text{width:min(680px,94%);font-size:16px;line-height:2.1;color:var(--ink);white-space:pre-line;margin-bottom:24px}
+#e-recap{width:min(680px,94%);border-top:1px solid var(--line2);padding-top:16px;font-size:13px;color:var(--muted);line-height:2;margin-bottom:24px}
+#e-btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+
+/* ---------- 彩蛋 ---------- */
+#egg-input{width:100%;font-family:var(--kai);font-size:17px;padding:12px 16px;background:rgba(247,241,227,.95);color:var(--paperink);border:1px solid var(--gold);border-radius:8px;outline:none;letter-spacing:.05em}
+#egg-result{margin-top:20px;text-align:center;min-height:70px}
+#egg-couplet{font-size:22px;line-height:2.2;color:var(--gold2);letter-spacing:.1em}
+#egg-tag{font-size:11px;color:var(--dim);margin-top:10px;letter-spacing:.15em}
+#egg-word{font-size:14px;color:var(--muted);margin:14px 0 4px}
+
+/* ---------- 谢幕 ---------- */
+#screen-credits{position:absolute;inset:0;z-index:22;display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:#120d0c;text-align:center;padding:20px}
+#screen-credits.on{display:flex}
+#c-title{font-size:min(60px,12vw);letter-spacing:.3em;color:var(--ink)}
+#c-line{font-size:15px;color:var(--muted);letter-spacing:.3em}
+#c-ai{font-size:12px;color:var(--dim);line-height:2.1;letter-spacing:.12em;max-width:560px}
+
+/* ---------- 页脚 ---------- */
+#footer{position:absolute;bottom:0;left:0;right:0;z-index:6;text-align:center;font-size:10px;color:rgba(141,127,106,.6);letter-spacing:.2em;padding:4px;pointer-events:none}
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="stage">
+    <div id="bg">
+      <div class="tint t1"></div><div class="tint t2"></div><div class="tint t3"></div><div class="tint t4"></div><div class="tint t5"></div>
+      <img id="bgimg" alt="">
+      <div id="bglabel"></div>
+    </div>
+
+    <div id="hud">
+      <div><div id="actname"></div><div id="actdots" style="font-size:9px;color:var(--gold);letter-spacing:6px;margin-top:5px;text-shadow:0 1px 3px rgba(0,0,0,.8)"></div></div>
+      <div id="stats">仙缘 <b id="st-t">0</b>　人情 <b id="st-q">0</b></div>
+<button class="ghostbtn" id="snd-btn" title="开 / 关">音 · 开</button>
+    </div>
+
+    <div id="portrait"><div class="ph"><span id="ph-name"></span></div></div>
+
+    <div id="choices"></div>
+
+    <div id="dlgwrap">
+      <div id="dlg">
+        <div id="dlg-name"></div>
+        <div id="dlg-text"></div>
+        <div id="dlg-next">▾ 空格 / 点击 继续</div>
+      </div>
+    </div>
+
+    <!-- 物件探索 -->
+    <div class="ov" id="ov-props">
+      <div class="ovpanel">
+        <div class="ovtitle">戏台边 · 老物件</div>
+        <div class="ovhint">开锣前，戏班把家当都摆开了。这些老物件我全认得——<br>点开，听我这棵老树说道说道。（看过四件，戏就开演了）</div>
+        <div id="propgrid"></div>
+        <div id="propfoot">
+          <div id="propcount">已看 0 / 8</div>
+          <button class="bigbtn" id="prop-go" disabled>开锣了，听戏去 →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 节奏游戏 -->
+    <div class="ov" id="ov-rhythm">
+      <div id="r-box">
+        <div class="ovtitle" style="text-align:center">开锣 · 锣鼓经</div>
+        <div class="ovhint" style="text-align:center;margin-bottom:0">仓＝大锣·重拍（左手 F）· 台＝小锣·轻拍（右手 J）—— 这套路我听了三百年，板眼都在年轮里<br>跟不上也不碍事：空格或点屏，算你抢了最近的一记</div>
+        <div id="r-track"><div id="r-hline"></div><div class="r-lane lc">F · 仓</div><div class="r-lane lt">J · 台</div></div>
+        <div id="r-phase" style="font-size:13px;color:var(--gold2);letter-spacing:3px;margin-top:8px">起势 · 鼓佬起头</div>
+        <div id="r-pads">
+          <div class="r-pad c" id="r-pad-c"><span class="zi">仓</span><span class="key">F</span></div>
+          <div class="r-pad t" id="r-pad-t"><span class="zi">台</span><span class="key">J</span></div>
+        </div>
+        <button class="bigbtn" id="r-go">起鼓开敲</button>
+        <div id="r-count">锣鼓佬已就位——点「起鼓」开整</div>
+        <div style="text-align:center;font-size:10px;color:var(--muted);opacity:.55;margin-top:6px;letter-spacing:2px">锣鼓 v4 · 防误触版</div>
+      </div>
+      <button class="ghostbtn" id="r-skip">跳过这段锣鼓</button>
+    </div>
+
+    <!-- 顺序游戏 -->
+    <div class="ov" id="ov-seq">
+      <div class="ovpanel">
+        <div class="ovtitle">扮戏 · 按老规矩来</div>
+        <div class="ovhint">布棚子里，角儿开始扮戏了。老规矩，五步，错一步都不行。<br>按我方才念叨的顺序点，看七仙女怎么上身。</div>
+        <div id="seq-tray"></div>
+        <div id="seq-grid"></div>
+        <div id="seq-hint"></div>
+      </div>
+    </div>
+
+    <!-- 彩蛋 -->
+    <div class="ov" id="ov-egg">
+      <div class="ovpanel">
+        <div class="ovtitle" style="text-align:center">尾声 · 添一句新词</div>
+        <div class="ovhint" style="text-align:center">戏散了，我的故事也讲完了。你要不要——<br>给这对夫妻，添一句你的新词？</div>
+        <input id="egg-input" maxlength="6" placeholder="写一个词（比如：槐花、回家、团圆）">
+        <div style="text-align:center;margin-top:14px"><button class="bigbtn" id="egg-go">落笔成词</button></div>
+        <div id="egg-result">
+          <div id="egg-word"></div>
+          <div id="egg-couplet"></div>
+          <div id="egg-tag"></div>
+        </div>
+        <div style="text-align:center;margin-top:20px"><button class="bigbtn" id="egg-done" style="display:none">谢幕</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结局屏 -->
+  <div id="screen-ending">
+    <img id="e-img" alt="">
+    <video id="e-video" controls muted playsinline></video>
+    <div id="e-title"></div>
+    <div id="e-sub"></div>
+    <div id="e-text"></div>
+    <div id="e-recap"></div>
+    <div id="e-btns">
+      <button class="bigbtn" id="e-egg">添一句新词</button>
+      <button class="ghostbtn" id="e-restart">重新开始这一天</button>
+    </div>
+  </div>
+
+  <!-- 标题屏 -->
+  <div id="screen-title">
+    <div class="main">开　锣</div>
+    <div class="sub">一棵老槐树，讲一出《天仙配》</div>
+    <div class="seal" id="btn-start">开演</div>
+    <div class="meta">锣鼓一响 · 老树开讲<br>建议桌面浏览器 · 时长约一刻钟 · 手机亦可</div>
+    <div class="meta" id="title-collect" style="margin-top:12px;color:var(--gold2);letter-spacing:.25em"></div>
+  </div>
+
+  <!-- 谢幕屏 -->
+  <div id="screen-credits">
+    <div id="c-title">谢　幕</div>
+    <div id="c-line">锣鼓一响，老树开讲。谢谢你听完这出戏。</div>
+    <div id="c-ai">本作品图片、音频、视频等素材由人工智能生成合成；剧情文本由人机协同创作。<br>作品含有三种结局，欢迎重新开锣，走另一条路。</div>
+    <button class="bigbtn" onclick="location.reload()">再开一次锣</button>
+  </div>
+
+  <div id="footer">本作品内容由人工智能生成合成</div>
+</div>
+
+<!-- 本地密钥文件（base64 分段混淆，已 .gitignore）：缺失时游戏照常运行，AI 对话自动降级为模板回复 -->
+<script src="secrets.local.js"></script>
+
+<script>
+/* =====================================================================
+   《开锣》单文件原型
+   续作指南见 ../00_项目背景书.md
+   - 剧情文本：STORY 相关对象与下方 main() 流程
+   - 素材接入：搜索 ASSET: 注释
+   - LLM 接入：CFG.llm + llmChat() + generateEgg()
+   ===================================================================== */
+
+const CFG = {
+  llm: {
+    /* 智谱 GLM-5.3-Flash（OpenAI 兼容格式）。密钥不落本文件——见 secrets.local.js
+       的 LOCAL_SECRETS.zhipuKey（base64 分段混淆，缺失则自动降级为模板回复） */
+    enabled: true,
+    endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    model: 'glm-5.3-flash',
+    apiKey: ''
+  },
+  /* 立绘显示开关：素材保留于 assets/char/，当前停用（试玩反馈融合度不佳，待打磨阶段重做） */
+  portraits: false,
+  assets: {
+    /* ASSET: 场景图（写实国风暗调，颜色交给上层 tint 蒙版控制）
+       v3.2 老槐树版场景清单：晒场黄昏 / 云头 / 槐荫白日 / 夜戏台 / 槐荫夜 */
+    sceneShaichang: 'assets/scene/S1_shaichang.jpg',
+    sceneYuntou: 'assets/scene/S2_yuntou.jpg',
+    sceneHuaiyin: 'assets/scene/S3_huaiyin.jpg',
+    sceneWutai: 'assets/scene/S4_wutai_ye.jpg',
+    sceneHuaiye: 'assets/scene/S5_huaiye.jpg',
+    /* ASSET: 立绘（v3.2：七仙女戏装 / 董永 待生成；云秋沿用；生成后开 CFG.portraits 评估） */
+    qixiannv: null, dongyong: null, yunqiu: 'assets/char/L2_yunqiu.jpg',
+    /* ASSET: 道具插图（第二幕物件探索卡片） */
+    props: {
+      mangpao: 'assets/prop/P1_mangpao.jpg', jing: 'assets/prop/P2_jing.jpg',
+      photo: 'assets/prop/P3_photo.jpg', hu: 'assets/prop/P4_hu.jpg',
+      yao: 'assets/prop/P5_yao.jpg', ben: 'assets/prop/P6_ben.jpg',
+      gu: 'assets/prop/P7_gu.jpg', chuang: 'assets/prop/P8_chuang.jpg'
+    },
+    /* ASSET: 结局画面（v3.3 新制：满树繁花/叶落有声/又一出戏，混元生图，水印已 PIL 修补） */
+    endE1: 'assets/ending/E1_manShuFanHua.jpg',
+    endE2: 'assets/ending/E2_yeLuoYouSheng.jpg',
+    endE3: 'assets/ending/E3_youYiChuXi.jpg',
+    /* ASSET: 开锣唱段视频（mp4），null 时不显示。旧 kailuo_e1.mp4 与旧结局绑定，可评估挪用于第五折满工 */
+    videoKailuo: null,
+    /* ASSET: 外挂背景音乐（mp3，自动循环）。放文件到 assets/audio/ 后填路径即替换内置合成配乐 */
+    bgm: 'assets/audio/bgm_wanyun.mp3', /* 《皖韵幕间曲》海绵音乐生成，循环底乐；《老剧团清晨》备用 */
+    /* ASSET: 第一幕击鼓音乐（《幕间锣鼓点》海绵音乐生成，切片+起音制谱已接入） */
+    drumMusic: 'assets/audio/drum_luogu.m4a',
+    /* 调参: 击鼓对齐微调（毫秒）。已自动补偿系统输出延迟；若仍觉得"音还没响、判定就来了"就加大，反之减小。蓝牙耳机可从 +100 起试 */
+    drumLatency: 0
+  }
+};
+
+const G = { taifeng: 0, qingyi: 0, propsSeen: 0, rhythmRate: 0, aiTalks: 0 }; /* taifeng=仙缘 qingyi=人情 aiTalks=与戏里人自由对话轮数 */
+
+/* 收集持久化（v3.3）：已收锣结局 + 老物件 8/8 集齐标记，跨周目存 localStorage，标题屏展示进度 */
+const COLLECT = {
+  key: 'kailuo_collect_v1',
+  data: { endings: [], propsFull: false },
+  load(){ try{ const d = JSON.parse(localStorage.getItem(this.key)); if(d && Array.isArray(d.endings)) this.data = d; }catch(e){} },
+  save(){ try{ localStorage.setItem(this.key, JSON.stringify(this.data)); }catch(e){} },
+  reachEnding(id){ if(!this.data.endings.includes(id)){ this.data.endings.push(id); this.save(); } },
+  fullProps(){ if(!this.data.propsFull){ this.data.propsFull = true; this.save(); } }
+};
+COLLECT.load();
+
+const $ = s => document.querySelector(s);
+const dlg = $('#dlg'), dlgName = $('#dlg-name'), dlgText = $('#dlg-text');
+
+/* ---------- 音频引擎：锣鼓 + 唱腔吟腔 + 淡雅配乐（Web Audio 纯合成，零外部文件） ---------- */
+const SND = {
+  ctx: null, master: null, on: true, ariaEnd: 0,
+  bgm: { playing:false, wanted:false, timer:null, next:0, lastIdx:3 },
+  init(){
+    if(this.ctx){ if(this.ctx.state === 'suspended') this.ctx.resume(); return true; }
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AC();
+      const comp = this.ctx.createDynamicsCompressor();
+      comp.threshold.value = -18; comp.ratio.value = 4;
+      comp.connect(this.ctx.destination);
+      /* 房间混响：master 干湿并联进压缩器，给打击乐一点"戏台空间"，去电子干涩感 */
+      const irLen = Math.floor(this.ctx.sampleRate * 1.3), ir = this.ctx.createBuffer(2, irLen, this.ctx.sampleRate);
+      for(let ch = 0; ch < 2; ch++){
+        const d = ir.getChannelData(ch);
+        for(let i = 0; i < irLen; i++){
+          const t = i / irLen;
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3.1) * (i < 90 ? i / 90 : 1);
+        }
+      }
+      const conv = this.ctx.createConvolver(); conv.buffer = ir;
+      const wet = this.ctx.createGain(); wet.gain.value = .16;
+      this.master = this.ctx.createGain();
+      this.master.gain.value = .9;
+      this.master.connect(comp);
+      this.master.connect(conv); conv.connect(wet); wet.connect(comp);
+      return true;
+    }catch(e){ return false; }
+  },
+  /* 打击乐瞬态：短噪声突发，给鼓声"皮"（笔记本小喇叭也能听见） */
+  _noise(at, dur, freq, vol){
+    const c = this.ctx, n = Math.max(8, Math.floor(c.sampleRate * dur));
+    const b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+    for(let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.2);
+    const s = c.createBufferSource(); s.buffer = b;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = .9;
+    const g = c.createGain(); g.gain.value = vol;
+    s.connect(f); f.connect(g); g.connect(this.master);
+    s.start(at);
+  },
+  /* 板鼓"哒"（at 为 ctx 时间，缺省立即；strong=重击）。鼓腔双共振峰 + 击皮瞬态，逐击随机微变 */
+  bangu(at, strong){
+    if(!this.on || !this.init()) return;
+    const c = this.ctx, t0 = at || c.currentTime;
+    const lv = (strong ? 1 : .72) * (.9 + Math.random() * .2);
+    this._noise(t0, .007, 2100 + Math.random() * 700, .85 * lv);
+    [[560, .22, .05], [980, .5, .07], [1970, .24, .04]].forEach(([f, a, d])=>{
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * (1 + (Math.random() - .5) * .03);
+      g.gain.setValueAtTime(a * lv, t0);
+      g.gain.exponentialRampToValueAtTime(.001, t0 + d * (1 + Math.random() * .25));
+      o.connect(g); g.connect(this.master);
+      o.start(t0); o.stop(t0 + d + .05);
+    });
+  },
+  /* 敲空闷响 */
+  thud(){
+    if(!this.on || !this.init()) return;
+    const c = this.ctx, t0 = c.currentTime;
+    this._noise(t0, .04, 900, .18);
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(190, t0);
+    o.frequency.exponentialRampToValueAtTime(88, t0 + .16);
+    g.gain.setValueAtTime(.45, t0);
+    g.gain.exponentialRampToValueAtTime(.001, t0 + .2);
+    o.connect(g); g.connect(this.master);
+    o.start(t0); o.stop(t0 + .22);
+  },
+  /* 堂鼓（低沉一声；鼓皮张力衰减=音高下滑，鼓腔多振膜，逐击随机） */
+  tanggu(at, vol){
+    if(!this.on || !this.init()) return;
+    const c = this.ctx, t0 = at || c.currentTime;
+    vol = (vol || .7) * (.92 + Math.random() * .16);
+    this._noise(t0, .028, 800 + Math.random() * 250, .3 * vol);
+    [[150, 82, .5, .55], [255, 150, .18, .3], [520, 420, .08, .13]].forEach(([f0, f1, a, d])=>{
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine';
+      const r = 1 + (Math.random() - .5) * .04;
+      o.frequency.setValueAtTime(f0 * r, t0);
+      o.frequency.exponentialRampToValueAtTime(f1 * r, t0 + d * .8);
+      g.gain.setValueAtTime(a * vol, t0);
+      g.gain.exponentialRampToValueAtTime(.001, t0 + d);
+      o.connect(g); g.connect(this.master);
+      o.start(t0); o.stop(t0 + d + .05);
+    });
+  },
+  /* 大锣（开锣/结局用）。非谐分音成对失谐→拍频金属颤动；两段衰减=先炸开再收韵 */
+  gong(){
+    if(!this.on || !this.init()) return;
+    const c = this.ctx, t0 = c.currentTime;
+    this._noise(t0, .03, 2700, .12);
+    [[152, .3, 3.4], [152.9, .2, 3.4], [368, .16, 2.6], [370.4, .1, 2.6], [617, .09, 1.9], [893, .05, 1.3], [1263, .03, .9]].forEach(([f, a, d])=>{
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * (1 + (Math.random() - .5) * .006);
+      g.gain.setValueAtTime(a, t0);
+      g.gain.exponentialRampToValueAtTime(a * .5, t0 + .13);
+      g.gain.exponentialRampToValueAtTime(.0008, t0 + d);
+      o.connect(g); g.connect(this.master);
+      o.start(t0); o.stop(t0 + d + .05);
+    });
+  },
+  /* 开锣前三声鼓 */
+  threeDrums(){
+    if(!this.on || !this.init()) return;
+    const t = this.ctx.currentTime + .12;
+    this.tanggu(t, .55); this.tanggu(t + .62, .62); this.tanggu(t + 1.24, .82);
+  },
+  /* 仓：大锣+堂鼓合击（锣鼓经重拍）。分音成对失谐出拍频，两段衰减 */
+  cang(at, vol){
+    if(!this.on || !this.init()) return;
+    vol = (vol == null ? 1 : vol) * (.9 + Math.random() * .2);
+    this.tanggu(at, .8 * vol);
+    const c = this.ctx, t0 = at || c.currentTime;
+    this._noise(t0, .025, 2400 + Math.random() * 400, .16 * vol);
+    [[196, .34, 2.2], [197.2, .22, 2.2], [475, .17, 1.5], [477.8, .1, 1.5], [832, .09, 1.05], [1275, .05, .7]].forEach(([f, a, d])=>{
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * (1 + (Math.random() - .5) * .007);
+      g.gain.setValueAtTime(a * vol, t0);
+      g.gain.exponentialRampToValueAtTime(a * vol * .45, t0 + .12);
+      g.gain.exponentialRampToValueAtTime(.0008, t0 + d);
+      o.connect(g); g.connect(this.master);
+      o.start(t0); o.stop(t0 + d + .05);
+    });
+  },
+  /* 台：小锣（锣鼓经轻拍）。高音区拍频对，短余韵，清脆 */
+  xiaoluo(at, vol){
+    if(!this.on || !this.init()) return;
+    vol = (vol == null ? 1 : vol) * (.9 + Math.random() * .2);
+    const c = this.ctx, t0 = at || c.currentTime;
+    this._noise(t0, .012, 6800, .08 * vol);
+    [[880, .3, .4], [884.5, .18, .4], [1790, .12, .28], [2690, .06, .2], [3590, .03, .13]].forEach(([f, a, d])=>{
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * (1 + (Math.random() - .5) * .008);
+      g.gain.setValueAtTime(a * vol, t0);
+      g.gain.exponentialRampToValueAtTime(a * vol * .45, t0 + .06);
+      g.gain.exponentialRampToValueAtTime(.0008, t0 + d);
+      o.connect(g); g.connect(this.master);
+      o.start(t0); o.stop(t0 + d + .05);
+    });
+  },
+  /* ---- 淡雅配乐：Karplus-Strong 拨弦（古筝质感）+ 五声音阶游走 ---- */
+  _pluckBuf: {},
+  pluck(freq, at, vol){
+    const c = this.ctx, key = Math.round(freq);
+    if(!this._pluckBuf[key]){
+      const sr = c.sampleRate, p = Math.max(2, Math.round(sr / freq)), n = Math.floor(sr * 2.2);
+      const ring = new Float32Array(p);
+      for(let i = 0; i < p; i++) ring[i] = Math.random() * 2 - 1;
+      const buf = c.createBuffer(1, n, sr), d = buf.getChannelData(0);
+      let idx = 0;
+      for(let i = 0; i < n; i++){
+        const cur = ring[idx], nxt = ring[(idx + 1) % p];
+        d[i] = cur; ring[idx] = .996 * .5 * (cur + nxt); idx = (idx + 1) % p;
+      }
+      this._pluckBuf[key] = buf;
+    }
+    const s = c.createBufferSource(); s.buffer = this._pluckBuf[key];
+    const g = c.createGain(); g.gain.value = vol;
+    s.connect(g); g.connect(this.master);
+    s.start(at);
+  },
+  BGM_SCALE: [196, 220, 261.63, 293.66, 329.63, 392, 440, 523.25], /* G 徵五声 */
+  bgmStart(){
+    if(!this.on || !this.init()) return;
+    const b = this.bgm;
+    b.wanted = true;
+    /* 外挂音频模式：CFG.assets.bgm 有值时循环播放文件，取代全部合成 */
+    if(CFG.assets.bgm){
+      if(!b.el){ b.el = new Audio(CFG.assets.bgm); b.el.loop = true; b.el.volume = .38; }
+      if(b.el.paused){ b.el.currentTime = 0; b.el.play().catch(()=>{}); }
+      return;
+    }
+    if(b.timer) return;
+    const c = this.ctx;
+    b.next = c.currentTime + .4;
+    b.droneNext = c.currentTime + .1;
+    b.droneIdx = 0;
+    b.timer = setInterval(()=>{
+      if(!this.on || this.ctx.state !== 'running') return;
+      const c = this.ctx;
+      if(b.next < c.currentTime - .5) b.next = c.currentTime + .3;
+      if(b.droneNext < c.currentTime - .5) b.droneNext = c.currentTime + .1;
+      while(b.droneNext < c.currentTime + 1.2){ /* 持续低音铺底：G2/D3 交替长音 */
+        this._drone([98, 146.83][b.droneIdx % 2], b.droneNext, 9);
+        b.droneIdx++; b.droneNext += 8.5;
+      }
+      while(b.next < c.currentTime + .9){ /* 拨弦织体：八分位密排，五度和音与倚音点缀 */
+        const r = Math.random();
+        const step = [-2, -1, -1, 1, 1, 2, 3][Math.floor(Math.random() * 7)];
+        b.lastIdx = Math.min(7, Math.max(0, b.lastIdx + step));
+        if(r < .14){ b.next += .62; continue; } /* 换气 */
+        this.pluck(this.BGM_SCALE[b.lastIdx], b.next, .16);
+        if(r > .78) this.pluck(this.BGM_SCALE[Math.min(7, b.lastIdx + 3)], b.next + .03, .09);
+        else if(r < .08 && b.next - c.currentTime > .1) this.pluck(this.BGM_SCALE[b.lastIdx], b.next - .09, .08);
+        b.next += .62;
+      }
+    }, 300);
+  },
+  _drone(f, at, dur){
+    const c = this.ctx;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(.05, at + 2.5);
+    g.gain.setValueAtTime(.05, at + dur - 2.5);
+    g.gain.linearRampToValueAtTime(0, at + dur);
+    g.connect(this.master);
+    [f, f * 1.006].forEach(fr=>{
+      const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = fr;
+      o.connect(g); o.start(at); o.stop(at + dur);
+    });
+  },
+  bgmStop(){
+    const b = this.bgm;
+    if(b.timer){ clearInterval(b.timer); b.timer = null; }
+    if(b.el) b.el.pause();
+    b.wanted = false;
+  },
+  /* ---- 唱腔：无词吟腔（共振峰人声 + 主胡托腔），原创徵调旋律 ---- */
+  ARIA: [
+    [392,1],[440,1],[523.25,1],[587.33,2],[659.25,1],[587.33,1],[523.25,1],[587.33,3],0,
+    [659.25,1],[587.33,1],[523.25,1],[440,1],[392,1],[440,1],[523.25,2],[440,3],0,
+    [783.99,1],[783.99,1],[659.25,1],[587.33,1],[659.25,1],[783.99,1],[880,2],[783.99,3],0,
+    [659.25,1],[587.33,1],[523.25,1],[587.33,1],[659.25,1],[587.33,1],[523.25,1],[440,1],[392,4]
+  ],
+  _voice(f, at, dur, prevF, vol){
+    const c = this.ctx;
+    const o = c.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(prevF, at);
+    o.frequency.exponentialRampToValueAtTime(f, at + .07); /* 滑音 */
+    const lfo = c.createOscillator(), lg = c.createGain();
+    lfo.frequency.value = 5.3; /* 戏腔颤音 */
+    lg.gain.setValueAtTime(0, at);
+    lg.gain.linearRampToValueAtTime(f * .013, at + Math.min(.9, dur));
+    lfo.connect(lg); lg.connect(o.frequency);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + .09);
+    g.gain.setValueAtTime(vol, at + Math.max(.1, dur - .06));
+    g.gain.linearRampToValueAtTime(.0001, at + dur + .12);
+    [[760, 7, .5], [1180, 9, .32]].forEach(([ff, q, vv])=>{ /* "啊"共振峰 */
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = ff; bp.Q.value = q;
+      const fg = c.createGain(); fg.gain.value = vv;
+      o.connect(bp); bp.connect(fg); fg.connect(g);
+    });
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
+    const dg = c.createGain(); dg.gain.value = .16;
+    o.connect(lp); lp.connect(dg); dg.connect(g);
+    g.connect(this.master);
+    o.start(at); o.stop(at + dur + .16);
+    lfo.start(at); lfo.stop(at + dur + .16);
+  },
+  _huqin(f, at, dur, vol){
+    const c = this.ctx;
+    const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, at);
+    const o2 = c.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(f * 2.003, at);
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = Math.min(1400, f * 1.5); bp.Q.value = 1.6;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + .12);
+    g.gain.setValueAtTime(vol, at + Math.max(.13, dur - .04));
+    g.gain.linearRampToValueAtTime(.0001, at + dur + .4);
+    o.connect(bp); o2.connect(bp); bp.connect(g); g.connect(this.master);
+    o.start(at); o.stop(at + dur + .45);
+    o2.start(at); o2.stop(at + dur + .45);
+  },
+  aria(vol){
+    if(!this.on || !this.init()) return 0;
+    vol = vol || 1;
+    const BEAT = .38, GAP = .35;
+    let t = this.ctx.currentTime + .3, prev = 392;
+    this.ARIA.forEach(nn=>{
+      if(nn === 0){ t += GAP; return; }
+      const f = nn[0], dur = nn[1] * BEAT;
+      this._voice(f, t, dur, prev, .42 * vol);
+      this._huqin(f, t, dur, .11 * vol);
+      if(nn[1] >= 3) this.bangu(t + dur - .02, true); /* 板 */
+      prev = f; t += dur;
+    });
+    const secs = t - this.ctx.currentTime + .5;
+    this.ariaEnd = performance.now() + secs * 1000;
+    return secs;
+  }
+};
+$('#snd-btn').onclick = ()=>{
+  SND.init();
+  SND.on = !SND.on;
+  $('#snd-btn').textContent = SND.on ? '音 · 开' : '音 · 关';
+  const b = SND.bgm;
+  if(!SND.on){
+    if(b.el) b.el.pause();
+    if(b.timer){ clearInterval(b.timer); b.timer = null; }
+  } else if(b.wanted) SND.bgmStart();
+};
+
+/* ---------- 场景与立绘 ---------- */
+const SCENE_LABEL = { shaichang:'晒场 · 黄昏', yuntou:'云头', huaiyin:'槐荫下', wutai:'夜戏台', huaiye:'槐荫 · 夜' };
+function setScene(key){
+  $('#bg').className = key || '';
+  $('#bglabel').textContent = SCENE_LABEL[key] || '';
+  const img = $('#bgimg');
+  const src = CFG.assets['scene' + key[0].toUpperCase() + key.slice(1)];
+  if(src){ img.src = src; img.classList.add('on'); } else img.classList.remove('on');
+}
+function setPortrait(key){
+  const p = $('#portrait');
+  if(!CFG.portraits){ p.style.display = 'none'; return; }
+  if(!key){ p.style.opacity = 0; setTimeout(()=>p.style.display='none', 350); return; }
+  p.style.display = 'block'; p.style.opacity = 1;
+  const nameMap = { qixiannv:'七仙女', dongyong:'董　永', yunqiu:'云　秋' };
+  $('#ph-name').textContent = nameMap[key] || '';
+  const img = p.querySelector('img') || document.createElement('img');
+  if(CFG.assets[key]){ img.src = CFG.assets[key]; if(!img.parentNode) p.prepend(img);
+    p.querySelector('.ph').style.display='none';
+  }
+}
+function setAct(n){ $('#actname').textContent = n; }
+function setDots(n){ /* 六折进度点（v3.3）：HUD 幕名下的 ●●○○○○ */
+  const el = $('#actdots');
+  el.textContent = (n == null) ? '' : '●'.repeat(n) + '○'.repeat(6 - n);
+}
+function updStats(){ $('#st-t').textContent = G.taifeng; $('#st-q').textContent = G.qingyi; }
+
+/* ---------- 对话（打字机，点击/空格加速/继续） ---------- */
+let dlgAdvance = null; /* 当前可推进的对话句柄，空格与点击共用 */
+function say(name, text, charKey){
+  return new Promise(resolve=>{
+    dlgAdvance = null;
+    dlgName.textContent = name || '';
+    dlgName.style.display = name ? '' : 'none';
+    setPortrait(charKey || null);
+    dlgText.textContent = '';
+    let i = 0, typing = true;
+    const iv = setInterval(()=>{
+      i++; dlgText.textContent = text.slice(0, i);
+      if(i >= text.length){ typing = false; clearInterval(iv); }
+    }, 26);
+    const h = ()=>{
+      if(typing){ clearInterval(iv); dlgText.textContent = text; typing = false; return; }
+      dlg.removeEventListener('click', h); dlgAdvance = null; resolve();
+    };
+    dlg.addEventListener('click', h);
+    dlgAdvance = h;
+  });
+}
+
+/* 空格推进叙事：打字中＝快进，打完＝继续。
+   三条边界——击鼓阶段空格归锣鼓点；输入框打字不接管；
+   任何情况下空格都不激活聚焦按钮（说/选项只能鼠标点，杜绝连点误入多选） */
+document.addEventListener('keydown', e=>{
+  if(e.code !== 'Space') return;
+  if(document.querySelector('#ov-rhythm.on')) return;
+  if(e.target.closest && e.target.closest('input,textarea')) return;
+  e.preventDefault();
+  if(!e.repeat && dlgAdvance) dlgAdvance();
+});
+
+/* ---------- 选项（每个节点可带 AI 自由交流行，与选项同处一框） ----------
+   v3.3：① 选项支持 reply2（树的心境第二屏，同走向不同质感，选择"被听见"）
+        ② ai 支持 tabs 双对象切换（路遇折：七仙女/董永）
+        ③ AI 对话后树声旁白引用，自由交流在叙事中留痕（G.aiTalks 计入结局 recap） */
+function choice(options, ai){
+  return new Promise(resolve=>{
+    const box = $('#choices'); box.innerHTML = '';
+    options.forEach(o=>{
+      const b = document.createElement('button');
+      b.className = 'choice'; b.textContent = o.label;
+      b.onclick = (e)=>{
+        e.stopPropagation(); box.innerHTML = '';
+        if(o.t) G.taifeng += o.t; if(o.q) G.qingyi += o.q; updStats();
+        (async()=>{
+          if(o.reply) await say(o.who || '', o.reply, o.char || null);
+          if(o.reply2) await say('我', o.reply2);
+          resolve(o);
+        })();
+      };
+      box.appendChild(b);
+    });
+    if(ai){
+      const tabs = ai.tabs || [ai];
+      let cur = tabs[0];
+      if(tabs.length > 1){
+        const tabRow = document.createElement('div');
+        tabRow.className = 'ai-tabs';
+        const lbl = document.createElement('span');
+        lbl.className = 'ai-tabs-label'; lbl.textContent = '跟谁说：';
+        tabRow.appendChild(lbl);
+        tabs.forEach(t=>{
+          const tb = document.createElement('button');
+          tb.className = 'ai-tab' + (t === cur ? ' on' : ''); tb.textContent = t.name;
+          tb.onclick = (e)=>{
+            e.stopPropagation(); cur = t;
+            tabRow.querySelectorAll('.ai-tab').forEach(x=>x.classList.remove('on'));
+            tb.classList.add('on');
+            inp.placeholder = `或者——直接跟${cur.name}说点什么（AI 实时应答）`;
+          };
+          tabRow.appendChild(tb);
+        });
+        box.appendChild(tabRow);
+      }
+      const row = document.createElement('div');
+      row.className = 'ai-row';
+      const inp = document.createElement('input');
+      inp.className = 'ai-input'; inp.maxLength = 60;
+      inp.placeholder = `或者——直接跟${cur.name}说点什么（AI 实时应答）`;
+      const btn = document.createElement('button');
+      btn.className = 'ai-send'; btn.textContent = '说';
+      const ECHO = '你们方才说的话，风都捎给我了。'; /* v3.3.1 降频：全篇只在头一回 AI 对话后出现一次，之后不再刷 */
+      const send = async ()=>{
+        const msg = inp.value.trim();
+        if(!msg) return;
+        btn.disabled = true; inp.disabled = true;
+        const pr = llmChat(msg, cur.persona, cur.anchor); /* 请求与台词打字并行：等待藏在动画里 */
+        await say('我', msg);
+        dlgName.textContent = cur.name; dlgName.style.display = '';
+        setPortrait(cur.char || null);
+        dlgText.textContent = '思考中……';
+        const r = await pr;
+        await say(cur.name + (r.live ? ' · AI' : ''), r.text, cur.char || null);
+        G.aiTalks++;
+        if(G.aiTalks === 1) await say('我', ECHO); /* 首次留痕，此后交给年轮 */
+        btn.disabled = false; inp.disabled = false; inp.value = '';
+      };
+      btn.onclick = send;
+      inp.onkeydown = e => { if(e.key === 'Enter') send(); e.stopPropagation(); };
+      row.appendChild(inp); row.appendChild(btn);
+      box.appendChild(row);
+    }
+  });
+}
+
+/* ---------- 开锣前：老物件探索（树的第一人称掌故） ---------- */
+const PROPS = [
+  {key:'mangpao', ic:'袍', nm:'旧蟒袍', text:'老魏把一件旧蟒袍搭上衣架，袖口磨得发亮。这件我认得——五三年剧团登记那年置的箱。\n再早年间，行头是跟庙会班子借的：借来的戏服，唱自己家的调。\n风把樟脑味吹过来，混着几十年戏台灯光的暖气。'},
+  {key:'jing', ic:'镜', nm:'化妆镜', text:'布棚里的镜子，老规矩都朝墙立着，怕散了神。\n黄梅戏不勾大脸——贴片子，俊扮，眉眼往生活里描。老话说：比台下的人美一分，就够了。\n早年有个小旦角，开锣前爱到我跟前，拿我的树荫当镜子练眼神。后来她成了角儿，我成了她歇脚的地方。'},
+  {key:'photo', ic:'照', nm:'老照片', text:'棚柱上钉着两张照片。小的一张是民国十八年——那时还叫"班"，在我树荫下打地摊，锣鼓一响就开唱。\n大的一张是一九五六年：全团进城看了场电影，严凤英的《天仙配》。回来那晚，一客车的人哼着"树上的鸟儿"，在我底下散了半宿。\n照片底下有行小字：戏在人身上。'},
+  {key:'hu', ic:'琴', nm:'主胡', text:'韩师傅的主胡挂在棚梁上，琴筒一道旧裂，细铜丝缠了一圈。\n"裂了，声音反倒沉了。"他说，"人也一样。"\n早先黄梅戏没有主胡——三打七唱，三个人打锣鼓就是一支乐队。戏进了城，弦子才跟上，托着腔走，一托几十年。'},
+  {key:'yao', ic:'药', nm:'药罐', text:'炉子上一罐药，胖大海、金银花，咕嘟了小半天。\n是云秋的。唱七仙女的那位，嗓子一到换季就闹脾气。这罐药熬了三十年：老团长熬过，她师父熬过，如今轮到她。\n黄梅戏的嗓子，一半唱出来，一半护出来。上月她试"满工"那个高音，破了——她没说，我听得见。树根底下，叹气声最清楚。'},
+  {key:'ben', ic:'本', nm:'手抄戏本', text:'衣箱底层压着本一九六五年的手抄《天仙配》，毛笔小楷，工整得像刻出来的。\n折目一折不少：思凡、路遇、上工、织绢、满工、槐荫别。\n老戏原没有本子，师父唱一句，徒弟记一句，全在肚子里。这本子不知哪位先人，一个字一个字，从嘴里搬到了纸上。\n缺了最后一页。老魏说，那年被人撕去包了东西——"词儿都在人肚子里，丢不了。"'},
+  {key:'gu', ic:'鼓', nm:'单皮鼓', text:'那面单皮鼓架在台口，鼓心磨出一圈浅浅的暗色。\n锣鼓是这行的骨头。三打七唱的年月，台上唱腔的气口，全指这几面锣鼓给。\n它什么脾气我清楚：你手上没数，它就不给你准点。'},
+  {key:'chuang', ic:'场', nm:'晒场', text:'晒场那头，新浆的水袖晾在绳上，风一过，白花花地晃。\n黄梅戏就是从这样的地方长出来的——田埂上的采茶调，茶山的花鼓，一路唱着进了城，落了户。\n今晚，它又回乡下来了。六十年，这块晒场送走过多少人上台，又接回多少人卸妆。'}
+];
+function propsScene(){
+  return new Promise(resolve=>{
+    const ov = $('#ov-props'), grid = $('#propgrid');
+    grid.innerHTML = ''; G.propsSeen = 0;
+    const seen = new Set();
+    PROPS.forEach(p=>{
+      const c = document.createElement('div');
+      c.className = 'prop';
+      const img = CFG.assets.props && CFG.assets.props[p.key];
+      c.innerHTML = (img ? `<img src="${img}" alt="${p.nm}">` : `<div class="ic">${p.ic}</div>`) + `<div class="nm">${p.nm}</div>`;
+      c.onclick = async ()=>{
+        if(seen.has(p.key)) return;
+        seen.add(p.key); G.propsSeen++;
+        c.classList.add('seen');
+        $('#propcount').textContent = `已看 ${G.propsSeen} / 8`;
+        if(G.propsSeen >= 4) $('#prop-go').disabled = false;
+        ov.classList.remove('on');
+        await say('', p.text);
+        ov.classList.add('on');
+      };
+      grid.appendChild(c);
+    });
+    $('#propcount').textContent = '已看 0 / 8';
+    $('#prop-go').disabled = true;
+    $('#prop-go').onclick = ()=>{ ov.classList.remove('on'); resolve(); };
+    ov.classList.add('on');
+  });
+}
+
+/* ---------- 第一幕：节奏游戏（《幕间锣鼓点》海绵音乐生成，实测起音制谱，仓/台逐点对位真实重音） ---------- */
+const DRUM_SCORE = [ /* [毫秒偏移, 谱字]：仓=强起音 c / 台=弱起音 t。偏移含切片前置 1.2s 静音 */
+  [1750,'c'],[2160,'t'],[2540,'t'],[2800,'t'],                                    /* 起势：重锤开点 */
+  [3330,'t'],[3580,'t'],[3840,'t'],[4250,'t'],[4630,'t'],[4910,'t'],[5410,'t'],    /* 走点：稳步行进 */
+  [5950,'c'],[6990,'t'],[7520,'c'],[8030,'c'],                                    /* 走点收句 */
+  [9080,'c'],[9970,'t'],[11180,'t'],[11700,'c'],[12220,'t'],[13260,'t'],           /* 紧点：渐密 */
+  [13780,'c'],[14170,'t'],[15110,'t'],[15360,'c'],[15880,'c'],[16410,'t'],         /* 紧点高潮 */
+  [17450,'t'],[18340,'t'],[19300,'t'],[19540,'c'],[20060,'t'],[20590,'c']          /* 收点：大锣收住 */
+];
+const DRUM_PHASES = [
+  ['起势 · 鼓佬起头', 0],
+  ['走点 · 稳稳行进', 3330],
+  ['紧点 · 点子密起来', 9080],
+  ['收点 · 一记大锣收住', 17450]
+];
+function rhythmGame(){
+  return new Promise(resolve=>{
+    const ov = $('#ov-rhythm'), track = $('#r-track'), padC = $('#r-pad-c'), padT = $('#r-pad-t'), phaseEl = $('#r-phase'), goBtn = $('#r-go');
+    const FALL = 1400;
+    SND.init(); SND.bgmStop();
+    /* 录音提前预载；播放挪进「起鼓」按钮的用户手势里——Safari/iOS/微信内核会拦掉定时器发起的 play()，
+       那正是"无声空跑 22 秒自动跳过"的根因。放不出来时 musDead=1，合成锣鼓顶场 */
+    const mus = CFG.assets.drumMusic ? new Audio(CFG.assets.drumMusic) : null;
+    if(mus){ mus.volume = .95; mus.preload = 'auto'; mus.load(); }
+    let t0 = 0, playStart = null, musDead = false, started = false, ended = false;
+    let fb = null, lastMT = -1, stall = 0, prevNow = -1; /* fb＝录音缓冲停摆时的秒表兜底，切换无缝 */
+    /* 判定时钟直读音频元素 currentTime（媒体时钟），免疫 performance 时钟与真实放音间的漂移；
+       drumLatency＝设备出声延迟补偿（毫秒，蓝牙耳机可试 120-250），正值让判定整体容忍晚敲。
+       注意取值走 CFG.assets.drumLatency 且数值化兜底——曾因引用不存在的 CFG.drumLatency 得到
+       NaN，循环里 NaN<结束时刻恒 false，整局第一帧就 finish，表象即"卡一下自动跳过" */
+    const LAT = +CFG.assets.drumLatency || 0;
+    const audioNow = ()=>{
+      if(playStart == null) return t0;
+      if(fb) return fb.now + (performance.now() - fb.perf) - LAT;
+      if(mus && !musDead && !mus.paused && !mus.ended) return t0 + mus.currentTime * 1000 - LAT;
+      return t0 + (performance.now() - playStart) - LAT;
+    };
+    const notes = []; let hits = 0, phaseTxt = '';
+    ov.classList.add('on'); /* 界面先亮出来，起鼓按钮等用户手势 */
+    const H = () => track.clientHeight;
+    async function beginDrum(){
+      if(started) return; started = true;
+      dlog('起鼓（用户手势）');
+      skipGuard(3000);
+      goBtn.disabled = true; goBtn.textContent = '备场中……';
+      SND.init(); /* 手势内再拉一把 AudioContext（Safari 冷启动会挂起） */
+      if(mus){
+        try{ await mus.play(); }catch(e){ /* 自动播放被拦或文件不可用，下面接管 */ }
+        if(mus.paused || mus.error) musDead = true;
+        if(musDead) mus.pause();
+      } else musDead = true;
+      dlog(musDead ? '录音没备上，合成锣鼓顶场' : '录音播放中（媒体时钟）');
+      goBtn.style.display = 'none';
+      const p0 = performance.now();
+      playStart = p0; t0 = p0 + 1600;
+      DRUM_SCORE.forEach(s=>{
+        const d = document.createElement('div');
+        d.className = 'r-note ' + s[1]; /* c=仓轨（左，红大） / t=台轨（右，金小） */
+        d.textContent = s[1] === 'c' ? '仓' : '台';
+        track.appendChild(d);
+        notes.push({ el: d, t: t0 + s[0], hit: false, missed: false, syl: s[1] });
+      });
+      $('#r-count').textContent = `听好——共 ${notes.length} 个点子` + (musDead ? '（录音没备上，老家的锣鼓顶着）' : '');
+      requestAnimationFrame(loop);
+    }
+    function loop(){
+      if(ended) return;
+      const now = audioNow();
+      if(prevNow >= 0 && Math.abs(now - prevNow) > 2500) dlog(`时钟异常：单帧跳变 ${Math.round(now - prevNow)}ms`);
+      prevNow = now;
+      if(!fb && mus && !musDead && !mus.paused && !mus.ended){ /* 缓冲停摆检测：音频卡住>0.7s 就无缝换秒表，音符不再悬停 */
+        const mt = mus.currentTime * 1000;
+        stall = Math.abs(mt - lastMT) < 1 ? stall + 1 : 0;
+        lastMT = mt;
+        if(stall > 42){ fb = { now: t0 + mt, perf: performance.now() }; dlog('音频停摆>0.7s，切秒表兜底'); }
+      }
+      let ph = DRUM_PHASES[0][0];
+      for(const p of DRUM_PHASES){ if(now >= t0 + p[1]) ph = p[0]; }
+      if(ph !== phaseTxt){ phaseTxt = ph; phaseEl.textContent = ph; }
+      notes.forEach(n=>{
+        if((!mus || musDead) && !n.snd && n.t - now < 300){ /* 录音缺失兜底：合成锣鼓经顶上 */
+          n.snd = true;
+          if(SND.ctx){
+            const at = SND.ctx.currentTime + Math.max(0, (n.t - performance.now()) / 1000);
+            if(n.syl === 'c') SND.cang(at); else SND.xiaoluo(at);
+          }
+        }
+        const p = (now - n.t + FALL) / FALL;
+        n.el.style.transform = `translate(-50%, ${p * (H() - 64)}px)`; /* p=1 恰好压在 64px 高的红判定线上 */
+        if(!n.hit && !n.missed && p > 1.17){ n.missed = true; n.el.classList.add('miss'); }
+      });
+      if(now < t0 + DRUM_SCORE[DRUM_SCORE.length - 1][0] + 900) requestAnimationFrame(loop);
+      else if(performance.now() - playStart < 15000){ /* 时钟谎言防护：真实时间没到 15 秒就"该收场"＝时钟在撒谎，弃音频时钟换秒表续跑，绝不自动跳过 */
+        dlog(`媒体时钟异常（此刻读到 ${Math.round(now - t0)}ms），转秒表续跑`);
+        musDead = true; if(mus){ try{ mus.pause(); }catch(e){} }
+        requestAnimationFrame(loop);
+      }
+      else finish();
+    }
+    function press(type){
+      SND.bangu(0, type === 'c'); /* 你的板鼓：仓重锤、台轻点，手感有别 */
+      const pad = type === 'c' ? padC : padT;
+      pad.classList.add('flash');
+      setTimeout(()=>pad.classList.remove('flash'), 160);
+      const now = audioNow();
+      let best = null, bd = 1e9;
+      notes.forEach(n=>{
+        if(n.hit || n.missed || n.syl !== type) return; /* 双键分管：F 只吃仓、J 只吃台，点再密也各归各轨 */
+        const d = Math.abs(now - n.t);
+        if(d < bd){ bd = d; best = n; }
+      });
+      if(best && bd < 260){
+        best.hit = true; hits++;
+        best.el.classList.add('hit');
+        if(bd < 120) best.el.classList.add('gold');
+        $('#r-count').textContent = `命中 ${hits} / ${notes.length}${bd < 120 ? ' · 准' : ''}`;
+      }
+    }
+    function pressAuto(){ /* 空格/空白处点屏的兜底：就近抢一记，不限键 */
+      const now = audioNow();
+      let best = null, bd = 1e9;
+      notes.forEach(n=>{
+        if(n.hit || n.missed) return;
+        const d = Math.abs(now - n.t);
+        if(d < bd){ bd = d; best = n; }
+      });
+      if(best) press(best.syl);
+    }
+    function finish(){
+      if(ended) return; ended = true;
+      dlog(`正常收点：命中 ${hits}/${notes.length}，用时 ${Math.round(performance.now() - playStart)}ms，录音可用=${!musDead}，秒表兜底=${!!fb}`);
+      if(mus) mus.pause();
+      document.removeEventListener('keydown', keyh);
+      ov.removeEventListener('pointerdown', ptr);
+      const rate = hits / notes.length;
+      G.rhythmRate = rate;
+      const cmt = rate >= .9 ? '好板眼！这手点子接得严丝合缝，搁草台班年月，能领一份锣鼓份钱。'
+        : rate >= .6 ? '稳是稳，紧点那儿毛了两下。不急，板眼是喂出来的。'
+        : '……先听出门道。点子这东西，得喂上百回，才长进年轮里。';
+      $('#r-count').textContent = `命中 ${hits} / ${notes.length} —— ${cmt}`;
+      setTimeout(()=>{
+        ov.classList.remove('on');
+        track.querySelectorAll('.r-note').forEach(n=>n.remove());
+        goBtn.style.display = ''; goBtn.disabled = false; goBtn.textContent = '起鼓开敲'; /* 复位，二周目还能敲 */
+        skipReset();
+        $('#r-count').textContent = '锣鼓佬已就位——点「起鼓」开整';
+        SND.bgmStart();
+        resolve(rate);
+      }, 1800);
+    }
+    const keyh = e => {
+      if(e.repeat) return; /* 长按不刷分 */
+      if(!started){ /* 起鼓前：F/J/空格任一键都算开敲（键盘也算用户手势，play() 必过） */
+        if(e.code === 'KeyF' || e.code === 'KeyJ' || e.code === 'Space'){ e.preventDefault(); beginDrum(); }
+        return;
+      }
+      if(e.code === 'KeyF'){ e.preventDefault(); press('c'); }
+      else if(e.code === 'KeyJ'){ e.preventDefault(); press('t'); }
+      else if(e.code === 'Space'){ e.preventDefault(); pressAuto(); }
+    };
+    document.addEventListener('keydown', keyh);
+    const ptr = e => {
+      if(e.target.closest('button, .r-pad')) return; /* pad 自有 onclick */
+      if(!started) return; /* 起鼓前点空白不动作，等明确手势 */
+      const tr = e.target.closest('#r-track');
+      if(tr){ /* 轨道内点屏：左半算仓、右半算台，手机也能双轨 */
+        const r = tr.getBoundingClientRect();
+        press(e.clientX - r.left < r.width / 2 ? 'c' : 't');
+      } else pressAuto();
+    };
+    ov.addEventListener('pointerdown', ptr);
+    padC.onclick = ()=> started ? press('c') : beginDrum(); /* 起鼓前点鼓垫＝起鼓 */
+    padT.onclick = ()=> started ? press('t') : beginDrum();
+    goBtn.onclick = beginDrum;
+    const skipBtn = $('#r-skip');
+    /* 退出原因埋点：再出状况，控制台敲 __drumLog 一看便知 */
+    const DLOG = window.__drumLog = [];
+    const dlog = m => { DLOG.push(`${Math.round(performance.now())}ms · ${m}`); console.info('[锣鼓]', m); };
+    dlog('浮层开启');
+    let skipArm = null, skipArmAt = 0, grace = null;
+    const skipReset = ()=>{ if(skipArm){ clearTimeout(skipArm); skipArm = null; } skipBtn.textContent = '跳过这段锣鼓'; };
+    const skipGuard = ms => { /* 防误触：叙事全程靠连点推进，惯性点击最凶的就是刚弹层/刚起鼓那两秒 */
+      skipBtn.disabled = true; skipReset();
+      if(grace) clearTimeout(grace);
+      grace = setTimeout(()=>{ if(!ended) skipBtn.disabled = false; }, ms);
+    };
+    skipGuard(4000);
+    skipBtn.onclick = ()=>{
+      if(skipBtn.disabled) return;
+      if(!skipArm){ /* 两段确认：第一次点只布防 */
+        skipArm = setTimeout(skipReset, 2500);
+        skipArmAt = performance.now();
+        skipBtn.textContent = '再点一次 · 确认跳过';
+        return;
+      }
+      if(performance.now() - skipArmAt < 700) return; /* 两次点击挨得太近＝连点惯性，不认 */
+      skipReset();
+      dlog('跳过（二次确认）');
+      G.rhythmRate = 0.5; ended = true;
+      if(mus) mus.pause();
+      document.removeEventListener('keydown', keyh);
+      ov.removeEventListener('pointerdown', ptr);
+      ov.classList.remove('on');
+      track.querySelectorAll('.r-note').forEach(n=>n.remove());
+      goBtn.style.display = ''; goBtn.disabled = false; goBtn.textContent = '起鼓开敲';
+      $('#r-count').textContent = '锣鼓佬已就位——点「起鼓」开整';
+      SND.bgmStart();
+      resolve(0.5);
+    };
+  });
+}
+
+/* ---------- 开锣前：扮戏顺序游戏（五步：网巾→水纱→贴片子→戴头面→穿褶子水袖） ---------- */
+function sequenceGame(){
+  return new Promise(resolve=>{
+    const ov = $('#ov-seq'), tray = $('#seq-tray'), grid = $('#seq-grid'), hint = $('#seq-hint');
+    const items = [
+      {nm:'网巾', hint:'先把头发拢住——网巾打底。'},
+      {nm:'水纱', hint:'网巾之上，水纱缠紧，勒出精气神。'},
+      {nm:'贴片子', hint:'额发片子，一片一片贴出旦角的眉眼。'},
+      {nm:'戴头面', hint:'头面点翠，七仙女的排场。'},
+      {nm:'穿褶子水袖', hint:'最后穿衣，水袖抖开，人就成了戏里人。'}
+    ];
+    const shuffled = [...items].sort(()=>Math.random() - .5);
+    tray.innerHTML = ''; hint.textContent = '';
+    let step = 0;
+    shuffled.forEach(it=>{
+      const b = document.createElement('button');
+      b.className = 'seq-item'; b.textContent = it.nm;
+      b.onclick = ()=>{
+        if(it.nm === items[step].nm){
+          b.classList.add('done');
+          const chip = document.createElement('span');
+          chip.className = 'seq-chip'; chip.textContent = `${step + 1}. ${it.nm}`;
+          tray.appendChild(chip);
+          hint.textContent = items[step].hint;
+          step++;
+          if(step === items.length){
+            hint.textContent = '镜子里的那个人，眉眼勾出来了。';
+            setTimeout(()=>{ ov.classList.remove('on'); resolve(); }, 900);
+          }
+        } else {
+          b.classList.add('shake');
+          setTimeout(()=>b.classList.remove('shake'), 350);
+          hint.textContent = '我摇了摇枝条提醒你——"……顺序。"';
+        }
+      };
+      grid.appendChild(b);
+    });
+    ov.classList.add('on');
+  });
+}
+
+/* ---------- LLM：角色对话（persona 制，柔性修正，mock 兜底） ---------- */
+const PERSONAS = {
+  qixiannv: {
+    sys: '你是《天仙配》里的七仙女，私下凡间，正在村口老槐树下。玩家就是这棵三百岁的老槐树，正跟你说话。你外柔内刚，心里装着董永。回话不超过90字，带一点戏文的腔调，收尾可用一个七字句，可以讲六折戏（思凡、路遇、上工、织绢、满工、槐荫别）里的事。若玩家问的话与这出戏、戏中人物或黄梅戏全然无关，不要生硬拒绝——先轻轻应一句，再自然把话头引回戏里（比如你与他的事、当下的情节）。',
+    mock: [
+      '老树，你站了三百年，怎么问题比董永还多。',
+      '这事戏里有的。你往下听，就明白了。',
+      '我不懂你说的那些。我只懂织绢，懂他。',
+      '嘘——锣鼓点到了，先听戏。',
+      '等这出戏唱完，我慢慢说给你听。'
+    ]
+  },
+  dongyong: {
+    sys: '你是《天仙配》里的董永，卖身葬父的穷长工，正在村口老槐树下。玩家就是这棵三百岁的老槐树。你憨厚老实，对七仙女又敬又愧，说话带庄稼人的本分。回话不超过90字，收尾可用一个七字句。若玩家问的话与这出戏、戏中人物或黄梅戏全然无关，先老老实实应一句，再把话头引回戏里（上工、赎身、七姐）。',
+    mock: [
+      '小人愚钝……这事，怕得问七姐。',
+      '庄稼人的事我懂些，旁的，真说不上来。',
+      '槐树公公，您见多识广，怎么也问我？',
+      '等做完这百日工，我陪您唠个够。',
+      '戏文里唱的，比我这笨嘴说得强。'
+    ]
+  },
+  yunqiu: {
+    sys: '你是县黄梅戏剧团的台柱云秋，今晚唱七仙女。开锣前你在村口老槐树下歇脚，玩家就是这棵三百岁的老槐树。你外冷内热，说话点到为止，爱用戏行话打比方，可以讲《天仙配》六折戏情、黄梅戏旧事（三打七唱、严凤英的电影、口传心授）。回话不超过90字，克制，有江湖气，收尾可用一个七字句。若玩家问的话与戏或黄梅戏全然无关，先轻轻应一句，再把话头引回戏上。',
+    mock: [
+      '这话问得好。戏里没有的答案，你到台上自己找去。',
+      '少想多练。锣鼓不等人，人也不能等自己。',
+      '你嘴上不说，叶子都写着呢。有心的，藏不住事。',
+      '想知道答案？等开锣，你自己听。',
+      '我像你这么大的时候，也问过一模一样的话。'
+    ]
+  }
+};
+/* 密钥解析：优先本地私密文件 secrets.local.js（LOCAL_SECRETS.zhipuKey），主文件与仓库不落明文 */
+const llmKey = () => CFG.llm.apiKey || (window.LOCAL_SECRETS && window.LOCAL_SECRETS.zhipuKey) || '';
+/* 输出安全（v3.3）：LLM 回复上屏前过敏感词+长度截断——柔性修正只防跑题，不防恶意引导，演示场景必须兜住 */
+const BAN_WORDS = ['习近平','毛泽东','邓小平','江泽民','胡锦涛','共产党','国民党','民进党','台独','藏独','疆独','法轮功','六四','文革','色情','裸体','性交','强奸','乱伦','嫖娼','吸毒','毒品','赌博','诈骗','炸弹','枪支','自杀','杀人','fuck','shit','bitch','porn','sex'];
+function sanitize(t){
+  let s = String(t || '').trim();
+  BAN_WORDS.forEach(w=>{ s = s.split(w).join('□'); });
+  if(s.length > 120) s = s.slice(0, 120) + '……';
+  return s;
+}
+/* 对话历史（v3.3）：每 persona 维护最近 4 轮（8 条），角色有记忆，连续追问不穿帮 */
+const LLM_HIST = {};
+async function llmChat(userMsg, personaKey, anchor){
+  const p = PERSONAS[personaKey] || PERSONAS.qixiannv;
+  if(CFG.llm.enabled && CFG.llm.endpoint && llmKey()){
+    try{
+      const hist = LLM_HIST[personaKey] || [];
+      const r = await fetch(CFG.llm.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + llmKey() },
+        body: JSON.stringify({
+          model: CFG.llm.model,
+          /* GLM-5.3 强制思考：默认 max 档要思考半分钟，low 档实测 3 秒内出答，质量对短对话足够 */
+          thinking: { type: 'enabled' },
+          reasoning_effort: 'low',
+          messages: [
+            { role: 'system', content: p.sys + (anchor ? '\n当前剧情进度：' + anchor : '') + '\n（硬性要求：全程只用中文，包括专有名词，任何情况下不输出英文单词；不要跳出人物。）' },
+            ...hist,
+            { role: 'user', content: userMsg }
+          ]
+        })
+      });
+      if(r.ok){
+        const j = await r.json();
+        const text = sanitize(j.choices[0].message.content);
+        LLM_HIST[personaKey] = [...hist, { role: 'user', content: userMsg }, { role: 'assistant', content: text }].slice(-8);
+        return { text, live: true };
+      }
+    }catch(e){ /* 落入模板兜底 */ }
+  }
+  const h = [...userMsg].reduce((a, c) => a + c.charCodeAt(0), 0);
+  return { text: p.mock[h % p.mock.length], live: false };
+}
+
+const EGG_TPL = [ /* v3.3：6 → 15 组，降级厚度 */
+  w => `借问${w}何处是，青山缺处是家山。`,
+  w => `${w}落在锣鼓外，一腔心思上眉头。`,
+  w => `莫道${w}无处诉，水袖甩处月满怀。`,
+  w => `${w}声声敲暮鼓，人间处处是台前。`,
+  w => `我把${w}唱进戏，戏里戏外两相思。`,
+  w => `一句${w}三更月，六十年灯下人。`,
+  w => `${w}开在槐荫里，香过十年台上妆。`,
+  w => `一曲${w}犹未尽，槐花落在掌声前。`,
+  w => `若问${w}有多重，水袖量过是相思。`,
+  w => `唱罢${w}灯渐暗，树影犹自护空台。`,
+  w => `${w}二字千斤重，压在新词第几行。`,
+  w => `且把${w}和泪唱，唱到云开见月明。`,
+  w => `何人解得${w}中意，槐荫树下旧夫妻。`,
+  w => `不唱${w}唱相逢，相逢尽在不言中。`,
+  w => `${w}随锣鼓远，留与来人慢慢听。`
+];
+async function generateEgg(word){
+  if(CFG.llm.enabled && CFG.llm.endpoint && llmKey()){
+    try{
+      const r = await fetch(CFG.llm.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + llmKey() },
+        body: JSON.stringify({
+          model: CFG.llm.model,
+          thinking: { type: 'enabled' },
+          reasoning_effort: 'low',
+          messages: [{
+            role: 'user',
+            content: `你是黄梅戏编词人。请以"${word}"入词，写两句七字唱词，要求合辙押韵、有黄梅戏的乡野抒情气质，只输出唱词本身，不要解释。唱词必须是纯中文，不夹任何英文。`
+          }]
+        })
+      });
+      if(r.ok){
+        const j = await r.json();
+        return { text: sanitize(j.choices[0].message.content), live: true };
+      }
+    }catch(e){ /* 模板兜底 */ }
+  }
+  const tpl = EGG_TPL[Math.floor(Math.random() * EGG_TPL.length)];
+  return { text: tpl(word), live: false };
+}
+
+/* ---------- 结局 ---------- */
+const ENDINGS = {
+  e1: { title: '满树繁花', sub: '结局一 · 天上人间，两不相忘',
+    text: `第二年春天，我开花开得比哪年都早。满树的槐花一嘟噜一嘟噜，香了半条村路。\n董永回来了，抱着个娃娃。娃娃抓着我的槐花笑。\n戏班把这一出唱了一遍又一遍，从村里唱到城里，从草台唱到大台。\n三百年，我看够了迎来送往。可这一桩事，我愿意他们一直唱下去。\n因为只要还唱着，她就没走远。` },
+  e2: { title: '叶落有声', sub: '结局二 · 替她看人间',
+    text: `日子一年一年地过。\n董永年年七月七来我树下坐一会儿，带一壶酒，不说什么。\n我年年那一天落一回叶子，落得满地都是——替她看一眼人间，也替他遮一遮太阳。\n戏班的人问我：树还会想戏里的事吗？\n树不说。树只是每年把槐花，开得比上一年更盛一点。` },
+  e3: { title: '又一出戏', sub: '结局三 · 云头上，又有往下看的人',
+    text: `戏散后的某个夜里，云头又亮了一下。\n一个小仙娥扒着云缝往下看——看路上的行人，看田里的烟火。那眼神，和当年的她一模一样。\n我把枝条往路边让了让，把树荫挪出一个好位置。\n来吧。\n老规矩——拜天地，先拜我。` }
+};
+function endingScreen(id){
+  return new Promise(resolve=>{
+    const e = ENDINGS[id];
+    /* ASSET: videoKailuo —— 结局一可插入开锣唱段视频；有视频时插图让位 */
+    const v = $('#e-video'), im = $('#e-img');
+    if(id === 'e1' && CFG.assets.videoKailuo){
+      v.src = CFG.assets.videoKailuo; v.style.display = 'block';
+      v.play().catch(()=>{});
+      im.style.display = 'none';
+    } else {
+      v.style.display = 'none';
+      const endImg = CFG.assets['end' + id.toUpperCase()];
+      if(endImg){ im.src = endImg; im.style.display = 'block'; }
+      else im.style.display = 'none';
+    }
+    $('#e-title').textContent = '《' + e.title + '》';
+    $('#e-sub').textContent = e.sub;
+    $('#e-text').textContent = e.text;
+    COLLECT.reachEnding(id);
+    $('#e-recap').innerHTML =
+      `这一出戏 —— 仙缘 ${G.taifeng} · 人情 ${G.qingyi} · 老物件 ${G.propsSeen}/8 · 锣鼓命中率 ${Math.round(G.rhythmRate * 100)}% · 同戏里人说了 ${G.aiTalks} 句话<br>` +
+      `已收锣 ${COLLECT.data.endings.length} / 3 种结局${G.propsSeen >= 8 ? ' · 老物件集齐，树洞私语已听闻' : ''}——欢迎再开一次锣，换一条路走。`;
+    $('#e-egg').onclick = ()=>{
+      $('#screen-ending').classList.remove('on');
+      eggScene().then(resolve);
+    };
+    $('#e-restart').onclick = ()=>location.reload();
+    if(id === 'e3') SND.aria(.5); /* 云头一亮：远处传来的吟腔 */
+    const gwait = Math.max(0, SND.ariaEnd - performance.now());
+    setTimeout(()=>SND.gong(), gwait + 600);
+    $('#screen-ending').classList.add('on');
+  });
+}
+
+/* ---------- 彩蛋 ---------- */
+function eggScene(){
+  return new Promise(resolve=>{
+    const ov = $('#ov-egg');
+    $('#egg-input').value = ''; $('#egg-word').textContent = '';
+    $('#egg-couplet').textContent = ''; $('#egg-tag').textContent = '';
+    $('#egg-done').style.display = 'none';
+    ov.classList.add('on');
+    $('#egg-go').onclick = async ()=>{
+      let w = $('#egg-input').value.trim();
+      if(!w) return;
+      if(w.length > 6) w = w.slice(0, 6);
+      $('#egg-word').textContent = '—— 以「' + w + '」入词 ——';
+      $('#egg-couplet').textContent = '研墨中……';
+      const r = await generateEgg(w);
+      const c = $('#egg-couplet');
+      c.textContent = '';
+      let i = 0;
+      const iv = setInterval(()=>{
+        i++; c.textContent = r.text.slice(0, i);
+        if(i >= r.text.length) clearInterval(iv);
+      }, 55);
+      $('#egg-tag').textContent = r.live ? '· 本句由大模型实时生成 ·' : '· 模板生成（未接入大模型 API）·';
+      $('#egg-done').style.display = 'inline-block';
+    };
+    $('#egg-done').onclick = ()=>{
+      ov.classList.remove('on');
+      $('#screen-credits').classList.add('on');
+      resolve();
+    };
+  });
+}
+
+/* =====================================================================
+   主流程
+   ===================================================================== */
+async function main(){
+  updStats();
+  (function(){ /* 标题屏收集进度（v3.3）：已收锣 x/3 · 老物件 8/8 */
+    const n = COLLECT.data.endings.length;
+    $('#title-collect').textContent = (n || COLLECT.data.propsFull)
+      ? `已收锣 ${n} / 3 种结局${COLLECT.data.propsFull ? ' · 老物件 8/8 已集齐' : ''}` : '';
+  })();
+  await new Promise(r => $('#btn-start').onclick = ()=>{ SND.init(); r(); });
+  $('#screen-title').style.display = 'none';
+  SND.bgmStart();
+
+  /* 序幕 · 老树开讲（v3.3.1 回滚：恢复原版六句——开场利落感优先） */
+  setScene('shaichang'); setAct('序幕 · 老树开讲'); setDots(null);
+  await say('我', '我是一棵老槐树。村口，大路旁，站了三百年。');
+  await say('我', '腿是没有的，耳朵灵光得很。东家的娃娃娶亲，西家的母鸡下蛋，我都知道。');
+  await say('我', '不过这一辈子最出奇的一桩事——是天上的七仙女，在我的树荫底下，嫁了人。');
+  await say('我', '你不信？今晚县里的黄梅戏剧团回村，把这事从头唱给你听。戏，叫《天仙配》。');
+  await say('我', '六十年前他们还是草台班，在我树荫下打地摊。今晚是剧团六十岁的生日，回老地方谢乡亲——台子，就搭在我跟前。');
+  await say('我', '趁锣鼓没响，先给你透个底：全本六折——思凡、路遇、上工、织绢、满工、槐荫别。别急，一折一折来。');
+
+  /* 开锣 · 锣鼓经 */
+  setScene('wutai'); setAct('开锣 · 锣鼓经');
+  await say('我', '天擦黑，台口的灯笼点起来了。开锣先开锣鼓——《四击头》《长锤》《急急风》。');
+  await rhythmGame();
+
+  /* 开锣前 · 老物件 */
+  setScene('shaichang'); setAct('开锣前 · 老物件');
+  await say('我', '锣鼓歇了气。戏班把家当都摆开了——这些老物件，我全认得。点开看看，听我这棵老树说道说道。');
+  await propsScene();
+  await say('我', '日头偏西，戏要开锣了。');
+
+  /* 开锣前 · 角儿在树下 */
+  await say('我', '开锣前，唱七仙女的云秋到我树根底下坐了一会儿。');
+  await say('我', '她每场开锣前都这样。三十年戏龄的人，还跟个新学员似的，紧张。');
+  await say('云秋', '"老树，今晚是全本。你说，七仙女落地头一眼看见你，该是个什么眼神？"', 'yunqiu');
+  await choice([
+    { label: '抖片叶子落在她肩上："稳着点，你唱了几百回。"', who:'我', reply: '她接住叶子，笑了："借你吉言。"', q: 1 },
+    { label: '不答话，听她把手里的思凡调哼完。', who:'我', reply: '她哼得很轻。思凡调从我的树根，一路飘上云头。', t: 1 }
+  ], { persona:'yunqiu', name:'云秋', char:'yunqiu', anchor:'开锣前，县剧团台柱云秋（今晚演七仙女）在老槐树下歇脚，今晚唱全本《天仙配》' });
+  await say('我', '锣响三遍。她起身，整了整水袖——角儿，要上身了。');
+
+  /* 开锣 · 扮戏 */
+  setAct('开锣 · 扮戏');
+  await sequenceGame();
+  await say('我', '网巾、水纱、贴片子、戴头面、穿褶子水袖——五步下来，云秋不见了。台上站着的，是七仙女。');
+
+  /* 第一折 · 思凡 */
+  setScene('yuntou'); setAct('第一折 · 思凡'); setDots(1);
+  SND.threeDrums();
+  await say('我', '幕一开，她立在云头。七仙女，天上顶小的一位。');
+  await say('我', '她往下望——望见一个叫董永的穷汉。爹死了，没钱下葬，他把自己卖给傅家当长工，换一口棺材。');
+  await say('我', '看着看着，她动了凡心。天上的仙不动心，一动心，就收不住了。');
+  await say('我', '她朝下看了最后一眼。那一眼，正好落在我这儿。');
+  await choice([
+    { label: '"去吧。人间苦，可人间有热乎气。"', who:'我', reply: '她像是听见了，裙角一摆，就下来了。', q: 1 },
+    { label: '"天上不好么？犯不着为一个穷汉。"', who:'我', reply: '她回头瞪我一眼："老树，你站了三百年，站得心里都长茧了。"——得，当我没说。她还是下来了。', t: 1 }
+  ], { persona:'qixiannv', name:'七仙女', char:'qixiannv', anchor:'第一折思凡：七仙女在云头望见董永卖身葬父，动了凡心，正要下凡' });
+  await say('我', '她落下来那天，人间四月，我的槐花刚开。');
+
+  /* 第二折 · 路遇（v3.3：数值重校——直说→人情、装神→仙缘；AI 双对象：七仙女/董永） */
+  setScene('huaiyin'); setAct('第二折 · 路遇'); setDots(2);
+  await say('我', '她落在董永上工的路上——好巧不巧，我的树荫底下。');
+  await say('我', '她拦路，他绕着走。再拦，再绕。三拦三绕，董永急了："这位大姐，你我素不相识——"');
+  await say('我', '她回头，朝我使了个眼色。得，该我上了。');
+  await choice([
+    { label: '直来直去："后生！她看中你了。槐树做媒，天地作证——天大的便宜，捡不捡？"', who:'我', reply: '董永愣了半天，脸涨得通红："树、树说话了……这，这怕是天意。"——他应了。', q: 1 },
+    { label: '拿腔拿调，装一回神："董永！槐树开口，天机已到。这门亲，你应不应？"', who:'我', reply: '他扑通就跪了："应！应！"她在旁边抿着嘴笑，冲我挤了挤眼。', t: 1 },
+    { label: '给他递个台阶："后生，我一棵树都看出来了。点个头，不亏。"', who:'我', reply: '董永搓着手，半晌，重重点了一下头。她低下头去，耳根红了。', q: 1 }
+  ], { tabs: [
+    { persona:'qixiannv', name:'七仙女', char:'qixiannv', anchor:'第二折路遇：七仙女在槐荫树下拦住董永，老槐树开口做媒' },
+    { persona:'dongyong', name:'董永', char:'dongyong', anchor:'第二折路遇：董永被七仙女拦路，三拦三绕，窘迫无措，老槐树正要开口做媒' }
+  ] });
+  await say('我', '槐荫树下，结成夫妻。拜天地那一回，他们先拜的我——三百年，我头一回坐高堂。');
+
+  /* 第三折 · 上工 */
+  setAct('第三折 · 上工'); setDots(3);
+  await say('我', '成了亲，得过日子；过日子，先得赎身。');
+  await say('我', '傅员外是个精明的："董永一人上工，她算怎么回事？"');
+  await say('我', '她当场立约：一夜织成十匹锦绢，就收她。员外算盘一打——一夜十匹？神仙也织不完。他应了。');
+  await say('我', '员外不知道，她真是神仙。');
+  await choice([
+    { label: '替她捏把汗："十匹锦绢，梭子飞断也悬呐。"', who:'我', reply: '她朝我笑笑："老树，夜里替我望个风。"', q: 1 },
+    { label: '替她撑腰："怕什么——你上头有姐姐。"', who:'我', reply: '她眼睛一亮："正是这个理。"', t: 1 }
+  ], { persona:'qixiannv', name:'七仙女', char:'qixiannv', anchor:'第三折上工：傅员外刁难，七仙女立约一夜织成十匹锦绢' });
+
+  /* 第四折 · 织绢 */
+  setAct('第四折 · 织绢'); setDots(4);
+  await say('我', '半夜，云头落下来六道影子——她的六位姐姐，一个不少。');
+  await say('我', '七把梭子飞了一整夜。我在外头望风，听机房里的梭子声，密得像夏天的雨。');
+  await choice([
+    { label: '摇摇枝条，把更夫的梆子声盖过去。', who:'我', reply: '更夫挠着头走远了。她后来在姐姐们跟前，夸了我一宿。', q: 1 },
+    { label: '把枝叶拢一拢，多让些月光进机房的窗。', who:'我', reply: '那一夜的月光，白得像新纺的线。', t: 1 }
+  ], { persona:'qixiannv', name:'七仙女', char:'qixiannv', anchor:'第四折织绢：六位仙姐下凡相助，一夜织成十匹锦绢' });
+  await say('我', '天亮，十匹锦绢，一匹不少。傅员外的脸，比锅底还黑。');
+  await say('我', '董永的三年长工，改作了百日。');
+
+  /* 第五折 · 满工 */
+  setScene('wutai'); setAct('第五折 · 满工'); setDots(5);
+  await say('我', '百日期满，小两口还家。一路走，一路唱——');
+  SND.aria();
+  await say('我', '"树上的鸟儿成双对，绿水青山带笑颜。"');
+  await say('我', '唱的就是我树梢上那对喜鹊。那一整天，我的影子都是甜的。');
+  await choice([
+    { label: '跟着乐：这样的日子，过一百年也不多。', who:'我', reply: '我也是这么想的。所以，我没提天上。', q: 1 },
+    { label: '心里发紧：天上的规矩，容得下这个么……', who:'我', reply: '我站了三百年，知道天上的账，迟早要来讨。', t: 1 }
+  ], { persona:'qixiannv', name:'七仙女', char:'qixiannv', anchor:'第五折满工：百日期满，夫妻双双把家还，全本最暖的一段' });
+  await say('我', '好日子过得快。快得我来不及多想。');
+
+  /* 第六折 · 槐荫别 */
+  setScene('huaiye'); setAct('第六折 · 槐荫别'); setDots(6);
+  SND.bgmStop(); /* 配乐落下去，天色压下来 */
+  await say('我', '台上的锣鼓，一下子全歇了。');
+  await say('我', '那天晌午，天忽然阴了。');
+  SND.tanggu();
+  await say('我', '玉帝的旨意到了：午时三刻，回天庭。不回——董永的命，抵。');
+  await say('我', '她没哭。她拉着董永，回到我的树荫下。成亲在这儿，别，也在这儿。');
+  await say('我', '她把话留在我的树洞前："来年春暖花开日，槐荫树下把子交。"——她有了身孕。这是她能留给他的，最后的话。');
+  await choice([
+    { label: '把整片树荫罩在他们身上，多罩一刻是一刻。', who:'我', reply: '她靠着我的树干，说完了最后一句贴心话。', q: 1 },
+    { label: '狠狠摇落一树叶子，替他们把天挡住。', who:'我', reply: '叶子落了一地。天，还是亮了。', t: 1 },
+    { label: '一动不动。我不敢动——怕一动，她就走了。', who:'我', reply: '三百年，我头一回恨自己是棵树。', q: 1 }
+  ], { persona:'qixiannv', name:'七仙女', char:'qixiannv', anchor:'第六折槐荫别：玉帝限七仙女午时三刻回天庭，否则祸及董永。她正在槐荫树下与董永诀别' });
+  await say('我', '午时三刻，云头压下来。她上去了。');
+  await say('我', '董永在我的树荫下坐到天黑。我没劝他。有些时辰，人得自己坐完。');
+
+  /* 尾声 · 收锣（框架闭合；v3.3 保留项：伏笔三连回收 + 树洞私语 + 结局判定预告——文本层其余回滚原版） */
+  setScene('wutai'); setAct('尾声 · 收锣'); setDots(null);
+  SND.bgmStart();
+  await say('我', '——最后一句唱落下去的时候，满晒场静了一瞬。');
+  await say('我', '然后掌声炸开，像夏天的急雨砸在晒场上。前排的老太太抹着眼睛；后排的娃娃骑在爹脖子上，甩着根本不存在的袖子。有人跟着哼"树上的鸟儿"——跑了调，没人笑话。');
+  await say('我', '台上，云秋谢幕。水袖收得干干净净，一个眼神朝我这边递过来——别人当是谢观众，我知道，那是谢我。');
+  await say('我', '满工那个高音，她今晚唱上去了——没破。上月在我树根底下落的那声叹气，今晚，她自个儿挣回来了。');
+  await say('我', '开锣前她问我：七仙女落地头一眼看见我，该是个什么眼神？今晚我有了答案——是回家的眼神。');
+  await say('我', '韩师傅把主胡装进布套。今晚他破例，把《急急风》催快了半拍。老魏已经蹲在衣箱边点行头了，嘴里念念有数。团长跟人一一握手道谢，腰板挺得笔直。');
+  await say('我', '灯笼一盏一盏灭下去。装行头的卡车突突地走远了。晒场空下来，只剩下我，和一地瓜子壳。');
+  await say('我', '戏散了。可我这棵树的故事，还差个尾巴——');
+  if(G.propsSeen >= 8){ /* 树洞私语：老物件 8/8 集齐解锁 */
+    await say('我', '对了——八件老物件，你一件没落地看完了。冲这份耐性，我把一桩只同树讲过的事，也讲给你。');
+    await say('我', '戏本缺的那一页，没包东西。是老魏的师父撕下来，贴身藏了一辈子，临终交给了老魏。如今那一页，就压在衣箱底，戏本的上头。');
+    await say('我', '缺页不缺词。缺的从来不是词——是肯把词补回去的人。');
+    COLLECT.fullProps();
+  }
+  await say('我', '那本六五年的手抄戏本，缺着最后一页，没人补。今夜，由我这棵树来补——补成什么样，看我这一路，把树荫偏向了哪边。');
+
+  /* 结局：仙缘与人情，看你一路把树荫偏向了哪边 */
+  setAct('尾声');
+  await endingScreen(
+    (G.taifeng >= 3 && G.qingyi >= 3) ? 'e1' : (G.taifeng > G.qingyi ? 'e3' : 'e2')
+  );
+}
+
+main();
+</script>
+</body>
+</html>
