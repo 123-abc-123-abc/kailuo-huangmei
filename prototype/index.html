@@ -590,6 +590,17 @@ const SND = {
     if(b.el) b.el.pause();
     b.wanted = false;
   },
+  bgmFade(to, secs){ /* 外挂 BGM 音量渐变：to 为目标音量（0-1），secs 为时长 */
+    const b = this.bgm;
+    if(!b.el) return;
+    if(b.fadeT){ clearInterval(b.fadeT); b.fadeT = null; }
+    const from = b.el.volume, t0 = performance.now();
+    b.fadeT = setInterval(()=>{
+      const k = Math.min(1, (performance.now() - t0) / (secs * 1000));
+      b.el.volume = Math.max(0, Math.min(1, from + (to - from) * k));
+      if(k >= 1){ clearInterval(b.fadeT); b.fadeT = null; }
+    }, 80);
+  },
   /* ---- 唱腔：无词吟腔（共振峰人声 + 主胡托腔），原创徵调旋律 ---- */
   ARIA: [
     [392,1],[440,1],[523.25,1],[587.33,2],[659.25,1],[587.33,1],[523.25,1],[587.33,3],0,
@@ -1252,9 +1263,7 @@ function endingScreen(id){
       eggScene().then(resolve);
     };
     $('#e-restart').onclick = ()=>location.reload();
-    if(id === 'e3') SND.aria(.5); /* 云头一亮：远处传来的吟腔 */
-    const gwait = Math.max(0, SND.ariaEnd - performance.now());
-    setTimeout(()=>SND.gong(), gwait + 600);
+    setTimeout(()=>SND.gong(), 600);
     $('#screen-ending').classList.add('on');
   });
 }
@@ -1394,7 +1403,6 @@ async function main(){
   /* 第五折 · 满工 */
   setScene('wutai'); setAct('第五折 · 满工'); setDots(5);
   await say('我', '百日期满，小两口还家。一路走，一路唱——');
-  SND.aria();
   await say('我', '"树上的鸟儿成双对，绿水青山带笑颜。"');
   await say('我', '唱的就是我树梢上那对喜鹊。那一整天，我的影子都是甜的。');
   await choice([
@@ -1405,7 +1413,7 @@ async function main(){
 
   /* 第六折 · 槐荫别 */
   setScene('huaiye'); setAct('第六折 · 槐荫别'); setDots(6);
-  SND.bgmStop(); /* 配乐落下去，天色压下来 */
+  SND.bgmFade(.12, 2.8); /* 配乐压低成一线，天色压下来——留悲别的底色，不再整段静场 */
   await say('我', '台上的锣鼓，一下子全歇了。');
   await say('我', '那天晌午，天忽然阴了。');
   SND.tanggu();
@@ -1422,7 +1430,7 @@ async function main(){
 
   /* 尾声 · 收锣（框架闭合；v3.3 保留项：伏笔三连回收 + 树洞私语 + 结局判定预告——文本层其余回滚原版） */
   setScene('wutai'); setAct('尾声 · 收锣'); setDots(null);
-  SND.bgmStart();
+  SND.bgmStart(); SND.bgmFade(.38, 1.5);
   await say('我', '——最后一句唱落下去的时候，满晒场静了一瞬。');
   await say('我', '然后掌声炸开，像夏天的急雨砸在晒场上。前排的老太太抹着眼睛；后排的娃娃骑在爹脖子上，甩着根本不存在的袖子。有人跟着哼"树上的鸟儿"——跑了调，没人笑话。');
   await say('我', '台上，云秋谢幕。水袖收得干干净净，一个眼神朝我这边递过来——别人当是谢观众，我知道，那是谢我。');
