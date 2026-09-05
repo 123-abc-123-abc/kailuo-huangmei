@@ -6,7 +6,7 @@
 
 ## 在线体验
 
-**[点此开演](https://king6.github.io/kailuo-huangmei/prototype/)** （桌面浏览器体验最佳，支持手机）
+**[点此开演](https://123-abc-123-abc.github.io/kailuo-huangmei/)** （桌面浏览器体验最佳，支持手机）
 
 ## 玩法
 
